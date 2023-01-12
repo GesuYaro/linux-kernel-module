@@ -5,19 +5,14 @@
 #include <asm/processor.h>
 #include <linux/namei.h>
 #include <linux/fs.h>
-// #include <linux/ioctl.h>
 #include <linux/ptrace.h>
-// #include <linux/pid.h>
-// #include <linux/netdevice.h>
-// #include <asm/syscall.h>
 #include <linux/sched.h>
-// #include <linux/namei.h>
-// #include <linux/mm_types.h>
-// #include <asm/page.h>
+#include <linux/spinlock.h>
 
 #include "driver.h"
 
 MODULE_LICENSE("GPL");
+DEFINE_SPINLOCK(my_spinlock);
 static int DEVICE_MAJOR_NUMBER = 26;
 
 int pid = 0;
@@ -73,6 +68,8 @@ static struct my_inode get_my_inode(struct inode *inode) {
 
 // This function will be called when we write IOCTL on the Device file
 static long driver_ioctl(struct file *file, unsigned int cmd, unsigned long arg) {
+	long flags;
+	spin_lock_irqsave(&my_spinlock, flags);
 	switch(cmd) {
 		case RD_MY_THREAD_STRUCT:
 			pr_info("RD_MY_THREAD_STRUCT ");
@@ -107,6 +104,7 @@ static long driver_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 			pr_info("Command not found!");
 			break;
 	}
+	spin_unlock_irqrestore(&my_spinlock, flags);
 	return 0;
 }
 
@@ -132,7 +130,7 @@ static int __init ioctl_core_init(void) {
 
 static void __exit ioctl_core_exit(void) {
 	unregister_chrdev(DEVICE_MAJOR_NUMBER, "my_driver");
-	printk(KERN_INFO "Core mode is finished, goodbye!\n");
+	printk(KERN_INFO "Closing the driver!\n");
 }
 
 module_init(ioctl_core_init);

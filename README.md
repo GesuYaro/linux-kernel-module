@@ -2,18 +2,18 @@
 ### ioctl: thread_struct, inode
 
 **Подготовка:**
-0. `cd src`
-1. `sudo mknod /dev/lab2_driver c 26 1`
-2. Выдать права файлу из п. 1 (например chmod)
-3. `make`
-4. `sudo insmod kernel_driver.ko`
-5. `make user`
+1. `cd src`
+2. `sudo mknod /dev/lab2_driver c 26 1`
+3. Выдать права файлу из п. 1 (например chmod)
+4. `make`
+5. `sudo insmod kernel_driver.ko`
+6. `make user`
 
 **Использование:**
 
 `./user_prg.exe [ts|inode] <argument>`
 
-ts: argument -- pid
+ts: `<argument>` -- pid
 
-inode: argument -- absolute path
+inode: `<argument>` -- absolute path
 

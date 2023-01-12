@@ -3,6 +3,8 @@
 #include <linux/kernel.h>
 #include <linux/fs.h>
 #include <asm/processor.h>
+#include <linux/namei.h>
+#include <linux/fs.h>
 // #include <linux/ioctl.h>
 #include <linux/ptrace.h>
 // #include <linux/pid.h>
@@ -23,10 +25,7 @@ int pid = 0;
 static struct my_thread_struct get_my_thread_struct(struct task_struct* task) {
 	struct thread_struct ts = task->thread;
 	pr_info("task = %d\n", task);
-	pr_info("static_prio = %d", task->static_prio);
-	// struct desc_struct tls_array[3] = {ts.tls_array[0], ts.tls_array[1], ts.tls_array[2]};
 	struct my_thread_struct mts = {
-		// .tls_array = tls_array,
 		.sp = ts.sp,
 		.es = ts.es,
 		.ds = ts.ds,
@@ -46,9 +45,28 @@ static struct my_thread_struct get_my_thread_struct(struct task_struct* task) {
 	return mts;
 }
 
-static struct my_inode get_my_inode(struct task_struct* task) {
+static struct my_inode get_my_inode(struct inode *inode) {
 	struct my_inode mi = {
-		.data = 206
+			.i_mode = inode->i_mode,
+			.i_opflags = inode->i_opflags,
+			.i_uid = inode->i_uid.val,
+			.i_gid = inode->i_gid.val,
+			.i_flags = inode->i_flags,
+			.i_ino = inode->i_ino,
+			.i_rdev = inode->i_rdev,
+			.i_size = inode->i_size,
+			.i_atime_sec = inode->i_atime.tv_sec,
+			.i_atime_nsec = inode->i_atime.tv_nsec,
+			.i_mtime_sec = inode->i_mtime.tv_sec,
+			.i_mtime_nsec = inode->i_mtime.tv_nsec,
+			.i_ctime_sec = inode->i_ctime.tv_sec,
+			.i_ctime_nsec = inode->i_ctime.tv_nsec,
+			.i_bytes = inode->i_bytes,
+			.i_blkbits = inode->i_blkbits,
+			.i_write_hint = inode->i_write_hint,
+			.i_blocks = inode->i_blocks,
+			.dirtied_when = inode->dirtied_when,
+			.dirtied_time_when = inode->dirtied_time_when
 	};
 	return mi;
 }
@@ -56,24 +74,37 @@ static struct my_inode get_my_inode(struct task_struct* task) {
 // This function will be called when we write IOCTL on the Device file
 static long driver_ioctl(struct file *file, unsigned int cmd, unsigned long arg) {
 	switch(cmd) {
-		case MY_REQUEST:
-			pr_info("MY_REQUEST ");
+		case RD_MY_THREAD_STRUCT:
+			pr_info("RD_MY_THREAD_STRUCT ");
 			pr_info("arg = %d\n", arg);
-			struct my_request mr;
-			if(copy_from_user(&mr, (int*) arg, sizeof(struct my_request))) pr_err("Data write error!\n");
-			pr_info("Pid = %d\n", mr.pid);
-			struct task_struct* task = get_pid_task(find_get_pid(mr.pid), PIDTYPE_PID);
+			struct thread_struct_request tsr;
+			if(copy_from_user(&tsr, (int*) arg, sizeof(struct thread_struct_request))) pr_err("Data write error!\n");
+			pr_info("Pid = %d\n", tsr.pid);
+			struct task_struct* task = get_pid_task(find_get_pid(tsr.pid), PIDTYPE_PID);
 			struct my_thread_struct mts = get_my_thread_struct(task);
-			mr.thread_struct = mts;	
-			struct my_inode mi = get_my_inode(task);
-			mr.inode = mi;	
-			if(copy_to_user((struct my_request*) arg, &mr, sizeof(struct my_request))) {
+			tsr.thread_struct = mts;	
+			if(copy_to_user((struct thread_struct_request*) arg, &tsr, sizeof(struct thread_struct_request))) {
+				printk(KERN_INFO "Data read error!\n");
+			}
+			break;
+		case RD_MY_INODE:
+			pr_info("RD_MY_INODE ");
+			pr_info("arg = %d\n", arg);
+			struct inode_request ir;
+			if(copy_from_user(&ir, (int*) arg, sizeof(struct inode_request))) pr_err("Data write error!\n");
+			pr_info("Path = %s", ir.path);
+			struct inode *inode;
+			struct path path_struct;
+			kern_path(ir.path, LOOKUP_FOLLOW, &path_struct);
+			inode = path_struct.dentry->d_inode;
+			struct my_inode mi = get_my_inode(inode);
+			ir.inode = mi;
+			if(copy_to_user((struct inode_request*) arg, &ir, sizeof(struct inode_request))) {
 				printk(KERN_INFO "Data read error!\n");
 			}
 			break;
 		default:
 			pr_info("Command not found!");
-			// pr_info("arg = %d\n", arg);
 			break;
 	}
 	return 0;

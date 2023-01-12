@@ -1,8 +1,8 @@
-#define MY_REQUEST _IOWR('a','a', struct my_request*)
+#define RD_MY_THREAD_STRUCT _IOWR('a','a', struct thread_struct_request*)
+#define RD_MY_INODE _IOWR('a','b', struct inode_request*)
 
 struct my_thread_struct {
 	/* Cached TLS descriptors: */
-    // struct desc_struct    tls_array[3];
     unsigned long        sp;
     unsigned short        es;
     unsigned short        ds;
@@ -28,11 +28,36 @@ struct my_thread_struct {
 };
 
 struct my_inode {
-	int data;
+	unsigned long	i_mode;
+	unsigned short	i_opflags;
+	unsigned int	i_uid;
+	unsigned int	i_gid;
+	unsigned int	i_flags;
+
+    unsigned long	i_ino;
+
+    unsigned long	i_rdev;
+	unsigned long	i_size;
+	long	i_atime_sec;
+	long	i_atime_nsec;
+	long	i_mtime_sec;
+	long	i_mtime_nsec;
+	long	i_ctime_sec;
+	long	i_ctime_nsec;
+	unsigned short      i_bytes;
+	unsigned short	    i_blkbits;
+	unsigned short		i_write_hint;
+	uint64_t		i_blocks;
+    unsigned long		dirtied_when;	/* jiffies of first dirtying */
+	unsigned long		dirtied_time_when;
 };
 
-struct my_request {
+struct thread_struct_request {
 	int32_t pid;
 	struct my_thread_struct thread_struct;
-	struct my_inode inode;
+};
+
+struct inode_request {
+    char* path;
+    struct my_inode inode;
 };

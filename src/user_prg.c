@@ -98,7 +98,6 @@ int main(int argc, char *argv[]) {
 			printf("Pid can be only greater than 0\n");
 			return -1;
 		}
-		// printf("\nOpening a driver...\n");
 		thread_struct_find(pid);
 	} else if (strcmp(argv[1], "inode") == 0) {
 		inode_find(argv[2]);

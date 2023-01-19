@@ -8,6 +8,7 @@
 #include <linux/ptrace.h>
 #include <linux/sched.h>
 #include <linux/spinlock.h>
+#include <linux/vmalloc.h>
 
 #include "driver.h"
 
@@ -78,6 +79,10 @@ static long driver_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 			if(copy_from_user(&tsr, (int*) arg, sizeof(struct thread_struct_request))) pr_err("Data write error!\n");
 			pr_info("Pid = %d\n", tsr.pid);
 			struct task_struct* task = get_pid_task(find_get_pid(tsr.pid), PIDTYPE_PID);
+			if (!task) {
+				printk(KERN_INFO "PID not found!\n");
+				break;
+			}
 			struct my_thread_struct mts = get_my_thread_struct(task);
 			tsr.thread_struct = mts;	
 			if(copy_to_user((struct thread_struct_request*) arg, &tsr, sizeof(struct thread_struct_request))) {
@@ -87,17 +92,20 @@ static long driver_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		case RD_MY_INODE:
 			pr_info("RD_MY_INODE ");
 			pr_info("arg = %d\n", arg);
-			struct inode_request ir;
-			if(copy_from_user(&ir, (int*) arg, sizeof(struct inode_request))) pr_err("Data write error!\n");
-			pr_info("Path = %s", ir.path);
-			struct inode *inode;
+			struct inode_request* ir = vmalloc(sizeof(struct inode_request));
+			if(copy_from_user(ir, (int*) arg, sizeof(struct inode_request))) pr_err("Data write error!\n");
+			pr_info("Path = %s", ir->path);
 			struct path path_struct;
-			kern_path(ir.path, LOOKUP_FOLLOW, &path_struct);
-			inode = path_struct.dentry->d_inode;
-			struct my_inode mi = get_my_inode(inode);
-			ir.inode = mi;
-			if(copy_to_user((struct inode_request*) arg, &ir, sizeof(struct inode_request))) {
-				printk(KERN_INFO "Data read error!\n");
+			int err = kern_path(ir->path, LOOKUP_FOLLOW, &path_struct);
+			if (!err) {
+				struct inode* inode = path_struct.dentry->d_inode;
+				struct my_inode mi = get_my_inode(inode);
+				ir->inode = mi;
+				if(copy_to_user((struct inode_request*) arg, ir, sizeof(struct inode_request))) {
+					printk(KERN_INFO "Data read error!\n");
+				}
+			} else {
+				pr_info("Wrong path!");
 			}
 			break;
 		default:
